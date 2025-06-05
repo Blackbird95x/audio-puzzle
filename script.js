@@ -8,7 +8,7 @@ parts.forEach((file) => {
   div.className = 'audio-box';
   div.draggable = true;
   div.dataset.audio = file;
-  div.innerHTML = `<audio controls src="audio/${file}"></audio>`;
+  div.innerHTML = `<audio controls src="audio_snippets/${file}"></audio>`;
   div.addEventListener('dragstart', dragStart);
   div.addEventListener('dragover', e => e.preventDefault());
   div.addEventListener('drop', drop);
