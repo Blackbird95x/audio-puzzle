@@ -274,31 +274,32 @@
         };
 
         const end = e => {
-          const t = e.changedTouches[0];
-          const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
-          const id = div.dataset.id;
-          const currentSlot = placed.length;
-          ghost.remove();
+  const t = e.changedTouches[0];
+  const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
+  const id = div.dataset.id;
+  const currentSlot = placed.length;
+  ghost.remove();
 
-          if (mixer.contains(dropTarget)) {
-            if (id === correctOrder[currentSlot]) {
-              placed.push(id);
-              mixer.appendChild(div);
-              showFeedback(true);
-              updatePlayButton();
-            } else {
-              source.appendChild(div);
-              div.classList.add('wrong');
-              showFeedback(false);
-              setTimeout(() => div.classList.remove('wrong'), 300);
-            }
-          } else {
-            source.appendChild(div);
-          }
+  // nur wenn das Originalelement NICHT bereits im Mixer ist
+  if (!placed.includes(id) && dropTarget && mixer.contains(dropTarget)) {
+    if (id === correctOrder[currentSlot]) {
+      placed.push(id);
+      mixer.appendChild(div);
+      showFeedback(true);
+      updatePlayButton();
+    } else {
+      div.classList.add('wrong');
+      showFeedback(false);
+      setTimeout(() => div.classList.remove('wrong'), 300);
+      source.appendChild(div);
+    }
+  } else {
+    source.appendChild(div);
+  }
 
-          document.removeEventListener('touchmove', move);
-          document.removeEventListener('touchend', end);
-        };
+  document.removeEventListener('touchmove', move);
+  document.removeEventListener('touchend', end);
+};
 
         document.addEventListener('touchmove', move, { passive: false });
         document.addEventListener('touchend', end);
