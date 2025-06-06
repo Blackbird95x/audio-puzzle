@@ -13,6 +13,7 @@
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
+      touch-action: manipulation;
     }
 
     .overlay {
@@ -22,12 +23,30 @@
       display: flex;
       flex-direction: column;
       gap: 1rem;
+      position: relative;
     }
 
     h1 {
       color: white;
       text-align: center;
       font-size: 1.5rem;
+    }
+
+    .tutorial {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      z-index: 2000;
+      padding: 2rem;
     }
 
     .game-area {
@@ -61,7 +80,12 @@
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       cursor: grab;
-      transition: transform 0.2s;
+      touch-action: none;
+    }
+
+    .audio-piece audio {
+      width: 100%;
+      outline: none;
     }
 
     .audio-piece.wrong {
@@ -91,41 +115,81 @@
       cursor: pointer;
     }
 
-    #popup {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.8);
+    button:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .checkmark, .crossmark {
       display: none;
-      align-items: center;
-      justify-content: center;
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      font-size: 2rem;
+      padding: 0.5rem;
+      border-radius: 50%;
+      z-index: 1000;
+    }
+
+    .checkmark {
+      background-color: #4caf50;
       color: white;
-      font-size: 1.5rem;
-      z-index: 999;
-      text-align: center;
+    }
+
+    .crossmark {
+      background-color: #ef4444;
+      color: white;
+    }
+
+    .visible {
+      display: block !important;
+      animation: fadeOut 2s forwards;
+    }
+
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { opacity: 0; display: none; }
+    }
+
+    .popup-alert {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      color: black;
       padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      z-index: 3000;
+      display: none;
     }
   </style>
 </head>
 <body>
   <div class="overlay">
+    <div class="tutorial" id="tutorial">
+      <h2>Willkommen beim Audio-Puzzle!</h2>
+      <p>Ziehe die Audioschnipsel von links in der richtigen Reihenfolge nach rechts in den Mixer.</p>
+      <p>Wenn du alles richtig gemacht hast, kannst du das komplette Audio anhören!</p>
+      <button onclick="closeTutorial()">Los geht's!</button>
+    </div>
+
     <h1>🎧 Audio-Puzzle: Finde den Kristall</h1>
     <div class="game-area">
-      <div id="source" class="zone">
-        <!-- Audios werden hier generiert -->
-      </div>
-      <div id="mixer" class="zone">
-        <!-- Zielbereiche -->
+      <div id="source" class="zone"></div>
+      <div id="mixer" class="zone" style="position: relative;">
+        <div id="checkmark" class="checkmark">✔️</div>
+        <div id="crossmark" class="crossmark">❌</div>
       </div>
     </div>
     <div id="final-audio">
-      <button onclick="playFinal()">🔊 Zusammengesetztes Audio abspielen</button>
+      <button id="playButton" onclick="checkBeforePlay()" disabled>🔊 Zusammengesetztes Audio abspielen</button>
     </div>
   </div>
 
-  <div id="popup">
-    🎉 Gut gemacht! Der Kristall ist hinter der großen Eiche!
-  </div>
+  <div id="popupAlert" class="popup-alert">Bitte platziere zuerst alle Schnipsel im Mixer!</div>
 
   <script>
     const audios = [
@@ -138,14 +202,70 @@
 
     const source = document.getElementById('source');
     const mixer = document.getElementById('mixer');
+    const checkmark = document.getElementById('checkmark');
+    const crossmark = document.getElementById('crossmark');
+    const playButton = document.getElementById('playButton');
+    const popupAlert = document.getElementById('popupAlert');
+
+    function showMark(mark) {
+      mark.classList.add('visible');
+      setTimeout(() => mark.classList.remove('visible'), 2000);
+    }
+
+    function closeTutorial() {
+      document.getElementById('tutorial').style.display = 'none';
+    }
+
+    function checkBeforePlay() {
+      if (source.children.length > 0) {
+        popupAlert.style.display = 'block';
+        setTimeout(() => popupAlert.style.display = 'none', 3000);
+        return;
+      }
+      playFinal();
+    }
+
+    function updatePlayButton() {
+      playButton.disabled = source.children.length > 0;
+    }
 
     audios.forEach(audio => {
       const div = document.createElement('div');
       div.className = 'audio-piece';
-      div.draggable = true;
       div.dataset.id = audio.id;
       div.innerHTML = `<audio controls src="audio_snippets/${audio.file}"></audio>`;
-      div.addEventListener('dragstart', e => e.dataTransfer.setData('id', audio.id));
+      div.draggable = true;
+      div.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('id', audio.id);
+      });
+
+      div.addEventListener('touchstart', e => {
+        div.classList.add('dragging');
+        div.touchStart = e.touches[0];
+      });
+
+      div.addEventListener('touchend', e => {
+        const touch = e.changedTouches[0];
+        const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (mixer.contains(dropTarget)) {
+          const currentSlot = placed.length;
+          const id = div.dataset.id;
+
+          if (id === correctOrder[currentSlot]) {
+            placed.push(id);
+            mixer.appendChild(div);
+            div.draggable = false;
+            showMark(checkmark);
+            updatePlayButton();
+          } else {
+            showMark(crossmark);
+            div.classList.add('wrong');
+            setTimeout(() => div.classList.remove('wrong'), 300);
+          }
+        }
+        div.classList.remove('dragging');
+      });
+
       source.appendChild(div);
     });
 
@@ -153,21 +273,16 @@
     mixer.addEventListener('drop', e => {
       const id = e.dataTransfer.getData('id');
       const dragged = document.querySelector(`[data-id="${id}"]`);
-
       const currentSlot = placed.length;
+
       if (id === correctOrder[currentSlot]) {
         placed.push(id);
         mixer.appendChild(dragged);
         dragged.draggable = false;
-        alert('Gut gemacht!');
-
-        if (placed.length === correctOrder.length) {
-          setTimeout(() => {
-            document.getElementById('popup').style.display = 'flex';
-            playFinal();
-          }, 500);
-        }
+        showMark(checkmark);
+        updatePlayButton();
       } else {
+        showMark(crossmark);
         dragged.classList.add('wrong');
         setTimeout(() => dragged.classList.remove('wrong'), 300);
       }
