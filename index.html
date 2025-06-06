@@ -180,7 +180,6 @@
   </div>
   <div id="popupAlert" class="popup-alert">Bitte platziere zuerst alle Schnipsel im Mixer!</div>
   <script>
-    let activeTouchElement = null;
     const audios = [
       {file: 'dummy1.mp3', id: 'a'},
       {file: 'dummy2.mp3', id: 'b'},
@@ -194,6 +193,7 @@
     const popupAlert = document.getElementById('popupAlert');
 
     function updatePlayButton() {
+      // Button aktiv, sobald alle Schnipsel verschoben sind (d.h. source ist leer)
       playButton.disabled = source.children.length > 0;
     }
 
@@ -221,6 +221,7 @@
       div.innerHTML = `<audio controls src="audio_snippets/${audio.file}"></audio>`;
       div.draggable = true;
 
+      // Desktop-Drag & Drop bleibt unverändert
       div.addEventListener('dragstart', e => {
         e.dataTransfer.setData('text/plain', audio.id);
         div.classList.add('dragging');
@@ -229,13 +230,14 @@
         div.classList.remove('dragging');
       });
 
+      // Touch-Handling:
       div.addEventListener('touchstart', e => {
-        activeTouchElement = div;
         e.preventDefault();
         const touch = e.touches[0];
         const offsetX = touch.clientX - div.getBoundingClientRect().left;
         const offsetY = touch.clientY - div.getBoundingClientRect().top;
 
+        // Klon für das Visuelle Dragelement
         const ghost = div.cloneNode(true);
         ghost.classList.add('dragging');
         ghost.style.position = 'fixed';
@@ -243,46 +245,45 @@
         ghost.style.width = `${div.offsetWidth}px`;
         document.body.appendChild(ghost);
 
+        // Während des Ziehens: Positionieren des Klons
         const move = e => {
           const t = e.touches[0];
           ghost.style.left = `${t.clientX - offsetX}px`;
           ghost.style.top = `${t.clientY - offsetY}px`;
         };
 
+        // Wenn der Finger losgelassen wird:
         const end = e => {
-  const t = e.changedTouches[0];
-  ghost.remove();
-  const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
-  const id = div.dataset.id;
-  const currentSlot = placed.length;
+          const t = e.changedTouches[0];
+          ghost.remove();
+          const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
+          const id = div.dataset.id;
+          const currentSlot = placed.length;
+          const isDropOnMixer = dropTarget && (dropTarget === mixer || mixer.contains(dropTarget));
 
-  const isDropOnMixer = dropTarget && (dropTarget === mixer || mixer.contains(dropTarget));
+          if (isDropOnMixer) {
+            if (id === correctOrder[currentSlot]) {
+              // richtiges Element: in den Mixer und „checkmark” zeigen
+              placed.push(id);
+              mixer.appendChild(div);
+              div.draggable = false;
+              showFeedback(true);
+              updatePlayButton();
+            } else {
+              // falsches Element: zurück in die Quelle und wackeln lassen
+              showFeedback(false);
+              source.appendChild(div);
+              div.classList.add('wrong');
+              setTimeout(() => div.classList.remove('wrong'), 300);
+            }
+          } else {
+            // nicht auf dem Mixer losgelassen: einfach zurück in die Quelle
+            source.appendChild(div);
+          }
 
-  if (isDropOnMixer) {
-    if (id === correctOrder[currentSlot]) {
-      placed.push(id);
-      mixer.appendChild(div);
-      div.draggable = false;
-      showFeedback(true);
-      updatePlayButton();
-    } else {
-      showFeedback(false);
-      source.appendChild(div);
-      if (activeTouchElement) {
-        activeTouchElement.classList.remove('wrong');
-        void activeTouchElement.offsetWidth;
-        activeTouchElement.classList.add('wrong');
-        setTimeout(() => activeTouchElement.classList.remove('wrong'), 300);
-      }
-    }
-  } else {
-    source.appendChild(div);
-  }
-
-  document.removeEventListener('touchmove', move);
-  document.removeEventListener('touchend', end);
-  activeTouchElement = null;
-};
+          document.removeEventListener('touchmove', move);
+          document.removeEventListener('touchend', end);
+        };
 
         document.addEventListener('touchmove', move, { passive: false });
         document.addEventListener('touchend', end);
@@ -291,6 +292,7 @@
       source.appendChild(div);
     });
 
+    // Desktop-Drop für Drag & Drop
     mixer.addEventListener('dragover', e => e.preventDefault());
     mixer.addEventListener('drop', e => {
       e.preventDefault();
