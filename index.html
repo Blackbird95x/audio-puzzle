@@ -261,8 +261,11 @@
               showFeedback(true);
               updatePlayButton();
             } else {
-              setTimeout(() => div.classList.add('wrong'), 10);
               showFeedback(false);
+              source.appendChild(div);
+              div.classList.remove('wrong');
+              void div.offsetWidth;
+              div.classList.add('wrong');
               setTimeout(() => div.classList.remove('wrong'), 300);
               source.appendChild(div);
             }
