@@ -86,8 +86,9 @@
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       cursor: grab;
-      touch-action: manipulation;
+      touch-action: none;
       transition: transform 0.2s;
+      position: relative;
     }
 
     .audio-piece.dragging {
@@ -247,7 +248,9 @@
       div.innerHTML = `<audio controls src="audio_snippets/${audio.file}"></audio>`;
       div.draggable = true;
 
-      div.addEventListener('dragstart', () => {
+      // Drag-Events für Desktop
+      div.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', audio.id);
         div.classList.add('dragging');
       });
 
@@ -255,17 +258,17 @@
         div.classList.remove('dragging');
       });
 
-      // touch support
-      let offsetX, offsetY;
-
+      // Touch-Events für Mobile
       div.addEventListener('touchstart', e => {
+        if (e.target.closest('audio')) return; // Audio player nicht unterbrechen
+
         const touch = e.touches[0];
+        const offsetX = touch.clientX - div.getBoundingClientRect().left;
+        const offsetY = touch.clientY - div.getBoundingClientRect().top;
+
+        div.style.position = 'fixed';
+        div.style.zIndex = '1000';
         div.classList.add('dragging');
-        offsetX = touch.clientX - div.getBoundingClientRect().left;
-        offsetY = touch.clientY - div.getBoundingClientRect().top;
-        div.style.position = 'absolute';
-        div.style.zIndex = 1000;
-        document.body.appendChild(div);
 
         const move = e => {
           const t = e.touches[0];
@@ -274,31 +277,31 @@
         };
 
         const end = e => {
+          div.classList.remove('dragging');
+          div.style = '';
+
           const t = e.changedTouches[0];
           const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
 
+          const id = div.dataset.id;
+          const currentSlot = placed.length;
+
           if (mixer.contains(dropTarget)) {
-            const id = div.dataset.id;
-            const currentSlot = placed.length;
             if (id === correctOrder[currentSlot]) {
               placed.push(id);
-              div.style.position = '';
-              div.style.left = '';
-              div.style.top = '';
               mixer.appendChild(div);
               showFeedback(true);
               updatePlayButton();
             } else {
-              showFeedback(false);
-              div.classList.add('wrong');
-              setTimeout(() => div.classList.remove('wrong'), 300);
               source.appendChild(div);
+              div.classList.add('wrong');
+              showFeedback(false);
+              setTimeout(() => div.classList.remove('wrong'), 300);
             }
           } else {
             source.appendChild(div);
           }
 
-          div.classList.remove('dragging');
           document.removeEventListener('touchmove', move);
           document.removeEventListener('touchend', end);
         };
@@ -316,6 +319,7 @@
       const id = e.dataTransfer.getData('text/plain');
       const dragged = document.querySelector(`[data-id="${id}"]`);
       const currentSlot = placed.length;
+
       if (id === correctOrder[currentSlot]) {
         placed.push(id);
         mixer.appendChild(dragged);
@@ -326,12 +330,6 @@
         showFeedback(false);
         dragged.classList.add('wrong');
         setTimeout(() => dragged.classList.remove('wrong'), 300);
-      }
-    });
-
-    document.addEventListener('dragstart', function(e) {
-      if (e.target.classList.contains('audio-piece')) {
-        e.dataTransfer.setData('text/plain', e.target.dataset.id);
       }
     });
 
