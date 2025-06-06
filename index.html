@@ -187,13 +187,13 @@
       <h2>Willkommen beim Audio-Puzzle!</h2>
       <p>Ziehe die Audioschnipsel von links in der richtigen Reihenfolge nach rechts in den Mixer.</p>
       <p>Wenn du alles richtig gemacht hast, kannst du das komplette Audio anhören!</p>
-      <button onclick="closeTutorial()">Los geht's!</button>
+      <button onclick="document.getElementById('tutorial').style.display='none'">Los geht's!</button>
     </div>
 
     <h1>🎧 Audio-Puzzle: Finde den Kristall</h1>
     <div class="game-area">
       <div id="source" class="zone"></div>
-      <div id="mixer" class="zone" style="position: relative;"></div>
+      <div id="mixer" class="zone"></div>
     </div>
     <div id="final-audio">
       <button id="playButton" onclick="checkBeforePlay()" disabled>🔊 Zusammengesetztes Audio abspielen</button>
@@ -216,8 +216,16 @@
     const playButton = document.getElementById('playButton');
     const popupAlert = document.getElementById('popupAlert');
 
-    function closeTutorial() {
-      document.getElementById('tutorial').style.display = 'none';
+    function updatePlayButton() {
+      playButton.disabled = source.children.length > 0;
+    }
+
+    function showFeedback(correct) {
+      const el = document.createElement('div');
+      el.className = correct ? 'checkmark visible' : 'crossmark visible';
+      el.textContent = correct ? '✔️' : '❌';
+      mixer.appendChild(el);
+      setTimeout(() => mixer.removeChild(el), 2000);
     }
 
     function checkBeforePlay() {
@@ -229,18 +237,6 @@
       playFinal();
     }
 
-    function updatePlayButton() {
-      playButton.disabled = source.children.length > 0;
-    }
-
-    function showFeedback(isCorrect) {
-      const el = document.createElement('div');
-      el.className = isCorrect ? 'checkmark visible' : 'crossmark visible';
-      el.textContent = isCorrect ? '✔️' : '❌';
-      mixer.appendChild(el);
-      setTimeout(() => mixer.removeChild(el), 2000);
-    }
-
     audios.forEach(audio => {
       const div = document.createElement('div');
       div.className = 'audio-piece';
@@ -248,7 +244,6 @@
       div.innerHTML = `<audio controls src="audio_snippets/${audio.file}"></audio>`;
       div.draggable = true;
 
-      // Drag-Events für Desktop
       div.addEventListener('dragstart', e => {
         e.dataTransfer.setData('text/plain', audio.id);
         div.classList.add('dragging');
@@ -258,33 +253,32 @@
         div.classList.remove('dragging');
       });
 
-      // Touch-Events für Mobile
+      // Touch-Unterstützung überall
       div.addEventListener('touchstart', e => {
-        if (e.target.closest('audio')) return; // Audio player nicht unterbrechen
-
+        e.preventDefault();
         const touch = e.touches[0];
         const offsetX = touch.clientX - div.getBoundingClientRect().left;
         const offsetY = touch.clientY - div.getBoundingClientRect().top;
 
-        div.style.position = 'fixed';
-        div.style.zIndex = '1000';
-        div.classList.add('dragging');
+        const ghost = div.cloneNode(true);
+        ghost.classList.add('dragging');
+        ghost.style.position = 'fixed';
+        ghost.style.zIndex = '1000';
+        ghost.style.width = `${div.offsetWidth}px`;
+        document.body.appendChild(ghost);
 
         const move = e => {
           const t = e.touches[0];
-          div.style.left = `${t.clientX - offsetX}px`;
-          div.style.top = `${t.clientY - offsetY}px`;
+          ghost.style.left = `${t.clientX - offsetX}px`;
+          ghost.style.top = `${t.clientY - offsetY}px`;
         };
 
         const end = e => {
-          div.classList.remove('dragging');
-          div.style = '';
-
           const t = e.changedTouches[0];
           const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
-
           const id = div.dataset.id;
           const currentSlot = placed.length;
+          ghost.remove();
 
           if (mixer.contains(dropTarget)) {
             if (id === correctOrder[currentSlot]) {
@@ -306,7 +300,7 @@
           document.removeEventListener('touchend', end);
         };
 
-        document.addEventListener('touchmove', move);
+        document.addEventListener('touchmove', move, { passive: false });
         document.addEventListener('touchend', end);
       });
 
@@ -319,7 +313,6 @@
       const id = e.dataTransfer.getData('text/plain');
       const dragged = document.querySelector(`[data-id="${id}"]`);
       const currentSlot = placed.length;
-
       if (id === correctOrder[currentSlot]) {
         placed.push(id);
         mixer.appendChild(dragged);
