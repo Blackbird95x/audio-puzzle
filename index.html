@@ -280,8 +280,15 @@
   const currentSlot = placed.length;
   ghost.remove();
 
-  // nur wenn das Originalelement NICHT bereits im Mixer ist
-  if (!placed.includes(id) && dropTarget && mixer.contains(dropTarget)) {
+  // check if ghost dropped inside actual mixer bounding box
+  const mixerBox = mixer.getBoundingClientRect();
+  const isOverMixer =
+    t.clientX >= mixerBox.left &&
+    t.clientX <= mixerBox.right &&
+    t.clientY >= mixerBox.top &&
+    t.clientY <= mixerBox.bottom;
+
+  if (!placed.includes(id) && isOverMixer) {
     if (id === correctOrder[currentSlot]) {
       placed.push(id);
       mixer.appendChild(div);
