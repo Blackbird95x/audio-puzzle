@@ -18,7 +18,6 @@
       width: 100%;
       overflow-x: hidden;
     }
-
     .overlay {
       backdrop-filter: brightness(0.6);
       min-height: 100vh;
@@ -29,13 +28,11 @@
       position: relative;
       box-sizing: border-box;
     }
-
     h1 {
       color: white;
       text-align: center;
       font-size: 1.5rem;
     }
-
     .tutorial {
       position: fixed;
       top: 0;
@@ -53,20 +50,17 @@
       padding: 2rem;
       box-sizing: border-box;
     }
-
     .game-area {
       display: flex;
       flex-direction: column;
       gap: 1rem;
     }
-
     @media (min-width: 768px) {
       .game-area {
         flex-direction: row;
         justify-content: space-between;
       }
     }
-
     .zone {
       flex: 1;
       padding: 1rem;
@@ -79,7 +73,6 @@
       border-radius: 8px;
       box-sizing: border-box;
     }
-
     .audio-piece {
       background: #fff;
       padding: 0.5rem;
@@ -90,22 +83,18 @@
       transition: transform 0.2s;
       position: relative;
     }
-
     .audio-piece.dragging {
       transform: scale(1.05);
       z-index: 1000;
       opacity: 0.7;
     }
-
     .audio-piece audio {
       width: 100%;
       outline: none;
     }
-
     .audio-piece.wrong {
       animation: shake 0.3s;
     }
-
     @keyframes shake {
       0% { transform: translateX(0); }
       25% { transform: translateX(-10px); }
@@ -113,12 +102,10 @@
       75% { transform: translateX(-10px); }
       100% { transform: translateX(0); }
     }
-
     #final-audio {
       margin-top: 1rem;
       text-align: center;
     }
-
     button {
       padding: 0.5rem 1rem;
       font-size: 1rem;
@@ -128,12 +115,10 @@
       color: white;
       cursor: pointer;
     }
-
     button:disabled {
       background-color: #94a3b8;
       cursor: not-allowed;
     }
-
     .checkmark, .crossmark {
       display: none;
       position: absolute;
@@ -144,28 +129,23 @@
       border-radius: 50%;
       z-index: 1000;
     }
-
     .checkmark {
       background-color: #4caf50;
       color: white;
     }
-
     .crossmark {
       background-color: #ef4444;
       color: white;
     }
-
     .visible {
       display: block !important;
       animation: fadeOut 2s forwards;
     }
-
     @keyframes fadeOut {
       0% { opacity: 1; }
       80% { opacity: 1; }
       100% { opacity: 0; display: none; }
     }
-
     .popup-alert {
       position: fixed;
       top: 50%;
@@ -189,7 +169,6 @@
       <p>Wenn du alles richtig gemacht hast, kannst du das komplette Audio anhören!</p>
       <button onclick="document.getElementById('tutorial').style.display='none'">Los geht's!</button>
     </div>
-
     <h1>🎧 Audio-Puzzle: Finde den Kristall</h1>
     <div class="game-area">
       <div id="source" class="zone"></div>
@@ -199,9 +178,7 @@
       <button id="playButton" onclick="checkBeforePlay()" disabled>🔊 Zusammengesetztes Audio abspielen</button>
     </div>
   </div>
-
   <div id="popupAlert" class="popup-alert">Bitte platziere zuerst alle Schnipsel im Mixer!</div>
-
   <script>
     const audios = [
       {file: 'dummy1.mp3', id: 'a'},
@@ -210,7 +187,6 @@
     ];
     const correctOrder = ['a', 'b', 'c'];
     const placed = [];
-
     const source = document.getElementById('source');
     const mixer = document.getElementById('mixer');
     const playButton = document.getElementById('playButton');
@@ -248,12 +224,10 @@
         e.dataTransfer.setData('text/plain', audio.id);
         div.classList.add('dragging');
       });
-
       div.addEventListener('dragend', () => {
         div.classList.remove('dragging');
       });
 
-      // Touch-Unterstützung überall
       div.addEventListener('touchstart', e => {
         e.preventDefault();
         const touch = e.touches[0];
@@ -274,39 +248,31 @@
         };
 
         const end = e => {
-  const t = e.changedTouches[0];
-  const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
-  const id = div.dataset.id;
-  const currentSlot = placed.length;
-  ghost.remove();
+          const t = e.changedTouches[0];
+          ghost.remove();
+          const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
+          const id = div.dataset.id;
+          const currentSlot = placed.length;
 
-  // check if ghost dropped inside actual mixer bounding box
-  const mixerBox = mixer.getBoundingClientRect();
-  const isOverMixer =
-    t.clientX >= mixerBox.left &&
-    t.clientX <= mixerBox.right &&
-    t.clientY >= mixerBox.top &&
-    t.clientY <= mixerBox.bottom;
+          if (dropTarget && mixer.contains(dropTarget)) {
+            if (id === correctOrder[currentSlot]) {
+              placed.push(id);
+              mixer.appendChild(div);
+              showFeedback(true);
+              updatePlayButton();
+            } else {
+              div.classList.add('wrong');
+              showFeedback(false);
+              setTimeout(() => div.classList.remove('wrong'), 300);
+              source.appendChild(div);
+            }
+          } else {
+            source.appendChild(div);
+          }
 
-  if (!placed.includes(id) && isOverMixer) {
-    if (id === correctOrder[currentSlot]) {
-      placed.push(id);
-      mixer.appendChild(div);
-      showFeedback(true);
-      updatePlayButton();
-    } else {
-      div.classList.add('wrong');
-      showFeedback(false);
-      setTimeout(() => div.classList.remove('wrong'), 300);
-      source.appendChild(div);
-    }
-  } else {
-    source.appendChild(div);
-  }
-
-  document.removeEventListener('touchmove', move);
-  document.removeEventListener('touchend', end);
-};
+          document.removeEventListener('touchmove', move);
+          document.removeEventListener('touchend', end);
+        };
 
         document.addEventListener('touchmove', move, { passive: false });
         document.addEventListener('touchend', end);
@@ -335,11 +301,12 @@
     });
 
     function playFinal() {
+      const audiosInMixer = mixer.querySelectorAll('audio');
       let index = 0;
       const playNext = () => {
-        if (index >= correctOrder.length) return;
-        const id = correctOrder[index];
-        const audio = new Audio(`audio_snippets/${audios.find(a => a.id === id).file}`);
+        if (index >= audiosInMixer.length) return;
+        const audio = audiosInMixer[index];
+        audio.currentTime = 0;
         audio.play();
         audio.onended = () => {
           index++;
