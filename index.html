@@ -261,7 +261,7 @@
               showFeedback(true);
               updatePlayButton();
             } else {
-              div.classList.add('wrong');
+              setTimeout(() => div.classList.add('wrong'), 10);
               showFeedback(false);
               setTimeout(() => div.classList.remove('wrong'), 300);
               source.appendChild(div);
