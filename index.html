@@ -2,15 +2,191 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Audio-Puzzle (Platzhalter)</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Puzzle Spiel</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background-color: black;
+      background-image: url('hintergrund.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    .overlay {
+      backdrop-filter: brightness(0.6);
+      min-height: 100vh;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+
+    .game-area {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    @media (min-width: 768px) {
+      .game-area {
+        flex-direction: row;
+        justify-content: space-between;
+      }
+    }
+
+    .zone {
+      flex: 1;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px dashed #ccc;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      border-radius: 8px;
+    }
+
+    .audio-piece {
+      background: #fff;
+      padding: 0.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      cursor: grab;
+      transition: transform 0.2s;
+    }
+
+    .audio-piece.wrong {
+      animation: shake 0.3s;
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      50% { transform: translateX(10px); }
+      75% { transform: translateX(-10px); }
+      100% { transform: translateX(0); }
+    }
+
+    #final-audio {
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+      background-color: #38bdf8;
+      color: white;
+      cursor: pointer;
+    }
+
+    #popup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+      z-index: 999;
+      text-align: center;
+      padding: 2rem;
+    }
+  </style>
 </head>
 <body>
-  <h1>Ordne die Audios in die richtige Reihenfolge!</h1>
-  <div id="audio-container"></div>
-  <button onclick="checkOrder()">Überprüfen</button>
-  <p id="result"></p>
-  <script src="script.js"></script>
+  <div class="overlay">
+    <h1>🎧 Audio-Puzzle: Finde den Kristall</h1>
+    <div class="game-area">
+      <div id="source" class="zone">
+        <!-- Audios werden hier generiert -->
+      </div>
+      <div id="mixer" class="zone">
+        <!-- Zielbereiche -->
+      </div>
+    </div>
+    <div id="final-audio">
+      <button onclick="playFinal()">🔊 Zusammengesetztes Audio abspielen</button>
+    </div>
+  </div>
+
+  <div id="popup">
+    🎉 Gut gemacht! Der Kristall ist hinter der großen Eiche!
+  </div>
+
+  <script>
+    const audios = [
+      {file: 'dummy1.mp3', id: 'a'},
+      {file: 'dummy2.mp3', id: 'b'},
+      {file: 'dummy3.mp3', id: 'c'}
+    ];
+    const correctOrder = ['a', 'b', 'c'];
+    const placed = [];
+
+    const source = document.getElementById('source');
+    const mixer = document.getElementById('mixer');
+
+    audios.forEach(audio => {
+      const div = document.createElement('div');
+      div.className = 'audio-piece';
+      div.draggable = true;
+      div.dataset.id = audio.id;
+      div.innerHTML = `<audio controls src="audio_snippets/${audio.file}"></audio>`;
+      div.addEventListener('dragstart', e => e.dataTransfer.setData('id', audio.id));
+      source.appendChild(div);
+    });
+
+    mixer.addEventListener('dragover', e => e.preventDefault());
+    mixer.addEventListener('drop', e => {
+      const id = e.dataTransfer.getData('id');
+      const dragged = document.querySelector(`[data-id="${id}"]`);
+
+      const currentSlot = placed.length;
+      if (id === correctOrder[currentSlot]) {
+        placed.push(id);
+        mixer.appendChild(dragged);
+        dragged.draggable = false;
+        alert('Gut gemacht!');
+
+        if (placed.length === correctOrder.length) {
+          setTimeout(() => {
+            document.getElementById('popup').style.display = 'flex';
+            playFinal();
+          }, 500);
+        }
+      } else {
+        dragged.classList.add('wrong');
+        setTimeout(() => dragged.classList.remove('wrong'), 300);
+      }
+    });
+
+    function playFinal() {
+      let index = 0;
+      const playNext = () => {
+        if (index >= correctOrder.length) return;
+        const id = correctOrder[index];
+        const audio = new Audio(`audio_snippets/${audios.find(a => a.id === id).file}`);
+        audio.play();
+        audio.onended = () => {
+          index++;
+          playNext();
+        };
+      };
+      playNext();
+    }
+  </script>
 </body>
 </html>
