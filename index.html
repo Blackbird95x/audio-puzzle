@@ -159,6 +159,29 @@
       z-index: 3000;
       display: none;
     }
+    /* ********** NEUER STYLE für Mobile Feedback ********** */
+    #mobileFeedback {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem 2rem;
+      border-radius: 10px;
+      font-size: 1.5rem;
+      color: white;
+      z-index: 4000;
+    }
+    #mobileFeedback.success {
+      background: rgba(76, 175, 80, 0.9); /* grün */
+    }
+    #mobileFeedback.error {
+      background: rgba(239, 68, 68, 0.9); /* rot */
+    }
+    /* ******************************************************* */
   </style>
 </head>
 <body>
@@ -178,7 +201,14 @@
       <button id="playButton" onclick="checkBeforePlay()" disabled>🔊 Zusammengesetztes Audio abspielen</button>
     </div>
   </div>
+
+  <!-- Popup, wenn noch nicht alle Elemente verschoben wurden -->
   <div id="popupAlert" class="popup-alert">Bitte platziere zuerst alle Schnipsel im Mixer!</div>
+
+  <!-- ********** Neues Mobile-Feedback-Pop-up ********** -->
+  <div id="mobileFeedback"></div>
+  <!-- ************************************************** -->
+
   <script>
     const audios = [
       {file: 'dummy1.mp3', id: 'a'},
@@ -191,18 +221,36 @@
     const mixer = document.getElementById('mixer');
     const playButton = document.getElementById('playButton');
     const popupAlert = document.getElementById('popupAlert');
+    const mobileFeedback = document.getElementById('mobileFeedback');
 
     function updatePlayButton() {
-      // Button aktiv, sobald alle Schnipsel verschoben sind (d.h. source ist leer)
+      // Button wird aktiv, sobald source leer ist
       playButton.disabled = source.children.length > 0;
     }
 
     function showFeedback(correct) {
+      // Desktop‐Feedback (kleines Häkchen/Kreuz im Mixer‐Bereich)
       const el = document.createElement('div');
       el.className = correct ? 'checkmark visible' : 'crossmark visible';
       el.textContent = correct ? '✔️' : '❌';
       mixer.appendChild(el);
       setTimeout(() => mixer.removeChild(el), 2000);
+    }
+
+    function showMobileFeedback(correct) {
+      // Mobile Feedback: zentrales Pop-up mit grünem Haken oder rotem Kreuz
+      if (correct) {
+        mobileFeedback.textContent = '✔️ Gut gemacht!';
+        mobileFeedback.className = 'success';
+      } else {
+        mobileFeedback.textContent = '❌ Versuch\'s nochmal!';
+        mobileFeedback.className = 'error';
+      }
+      mobileFeedback.style.display = 'flex';
+      // nach 1,5 Sekunden wieder ausblenden
+      setTimeout(() => {
+        mobileFeedback.style.display = 'none';
+      }, 1500);
     }
 
     function checkBeforePlay() {
@@ -221,7 +269,7 @@
       div.innerHTML = `<audio controls src="audio_snippets/${audio.file}"></audio>`;
       div.draggable = true;
 
-      // Desktop-Drag & Drop bleibt unverändert
+      // Desktop-Drag & Drop
       div.addEventListener('dragstart', e => {
         e.dataTransfer.setData('text/plain', audio.id);
         div.classList.add('dragging');
@@ -230,14 +278,14 @@
         div.classList.remove('dragging');
       });
 
-      // Touch-Handling:
+      // Touch-Handling
       div.addEventListener('touchstart', e => {
         e.preventDefault();
         const touch = e.touches[0];
         const offsetX = touch.clientX - div.getBoundingClientRect().left;
         const offsetY = touch.clientY - div.getBoundingClientRect().top;
 
-        // Klon für das Visuelle Dragelement
+        // Erstelle Klon für das visuelle Ziehen
         const ghost = div.cloneNode(true);
         ghost.classList.add('dragging');
         ghost.style.position = 'fixed';
@@ -245,14 +293,12 @@
         ghost.style.width = `${div.offsetWidth}px`;
         document.body.appendChild(ghost);
 
-        // Während des Ziehens: Positionieren des Klons
         const move = e => {
           const t = e.touches[0];
           ghost.style.left = `${t.clientX - offsetX}px`;
           ghost.style.top = `${t.clientY - offsetY}px`;
         };
 
-        // Wenn der Finger losgelassen wird:
         const end = e => {
           const t = e.changedTouches[0];
           ghost.remove();
@@ -263,21 +309,29 @@
 
           if (isDropOnMixer) {
             if (id === correctOrder[currentSlot]) {
-              // richtiges Element: in den Mixer und „checkmark” zeigen
+              // richtig
               placed.push(id);
               mixer.appendChild(div);
               div.draggable = false;
-              showFeedback(true);
+              if (window.innerWidth < 768) {
+                showMobileFeedback(true);
+              } else {
+                showFeedback(true);
+              }
               updatePlayButton();
             } else {
-              // falsches Element: zurück in die Quelle und wackeln lassen
-              showFeedback(false);
+              // falsch
               source.appendChild(div);
-              div.classList.add('wrong');
-              setTimeout(() => div.classList.remove('wrong'), 300);
+              if (window.innerWidth < 768) {
+                showMobileFeedback(false);
+              } else {
+                showFeedback(false);
+                div.classList.add('wrong');
+                setTimeout(() => div.classList.remove('wrong'), 300);
+              }
             }
           } else {
-            // nicht auf dem Mixer losgelassen: einfach zurück in die Quelle
+            // außerhalb des Mixers losgelassen → zurück in die Quelle
             source.appendChild(div);
           }
 
@@ -292,7 +346,7 @@
       source.appendChild(div);
     });
 
-    // Desktop-Drop für Drag & Drop
+    // Desktop‐Drop
     mixer.addEventListener('dragover', e => e.preventDefault());
     mixer.addEventListener('drop', e => {
       e.preventDefault();
