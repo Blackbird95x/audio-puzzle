@@ -180,6 +180,7 @@
   </div>
   <div id="popupAlert" class="popup-alert">Bitte platziere zuerst alle Schnipsel im Mixer!</div>
   <script>
+    let activeTouchElement = null;
     const audios = [
       {file: 'dummy1.mp3', id: 'a'},
       {file: 'dummy2.mp3', id: 'b'},
@@ -229,6 +230,7 @@
       });
 
       div.addEventListener('touchstart', e => {
+        activeTouchElement = div;
         e.preventDefault();
         const touch = e.touches[0];
         const offsetX = touch.clientX - div.getBoundingClientRect().left;
@@ -265,14 +267,13 @@
       updatePlayButton();
     } else {
       showFeedback(false);
-      const targetPiece = document.querySelector(`.audio-piece[data-id="${id}"]`);
-      if (targetPiece) {
-        targetPiece.classList.remove('wrong');
-        void targetPiece.offsetWidth;
-        targetPiece.classList.add('wrong');
-        setTimeout(() => targetPiece.classList.remove('wrong'), 300);
-      }
       source.appendChild(div);
+      if (activeTouchElement) {
+        activeTouchElement.classList.remove('wrong');
+        void activeTouchElement.offsetWidth;
+        activeTouchElement.classList.add('wrong');
+        setTimeout(() => activeTouchElement.classList.remove('wrong'), 300);
+      }
     }
   } else {
     source.appendChild(div);
@@ -280,6 +281,7 @@
 
   document.removeEventListener('touchmove', move);
   document.removeEventListener('touchend', end);
+  activeTouchElement = null;
 };
 
         document.addEventListener('touchmove', move, { passive: false });
