@@ -81,6 +81,13 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       cursor: grab;
       touch-action: none;
+      transition: transform 0.2s;
+    }
+
+    .audio-piece.dragging {
+      transform: scale(1.05);
+      z-index: 1000;
+      opacity: 0.7;
     }
 
     .audio-piece audio {
@@ -179,10 +186,7 @@
     <h1>🎧 Audio-Puzzle: Finde den Kristall</h1>
     <div class="game-area">
       <div id="source" class="zone"></div>
-      <div id="mixer" class="zone" style="position: relative;">
-        <div id="checkmark" class="checkmark">✔️</div>
-        <div id="crossmark" class="crossmark">❌</div>
-      </div>
+      <div id="mixer" class="zone" style="position: relative;"></div>
     </div>
     <div id="final-audio">
       <button id="playButton" onclick="checkBeforePlay()" disabled>🔊 Zusammengesetztes Audio abspielen</button>
@@ -202,15 +206,8 @@
 
     const source = document.getElementById('source');
     const mixer = document.getElementById('mixer');
-    const checkmark = document.getElementById('checkmark');
-    const crossmark = document.getElementById('crossmark');
     const playButton = document.getElementById('playButton');
     const popupAlert = document.getElementById('popupAlert');
-
-    function showMark(mark) {
-      mark.classList.add('visible');
-      setTimeout(() => mark.classList.remove('visible'), 2000);
-    }
 
     function closeTutorial() {
       document.getElementById('tutorial').style.display = 'none';
@@ -229,41 +226,79 @@
       playButton.disabled = source.children.length > 0;
     }
 
+    function showFeedback(isCorrect) {
+      const el = document.createElement('div');
+      el.className = isCorrect ? 'checkmark visible' : 'crossmark visible';
+      el.textContent = isCorrect ? '✔️' : '❌';
+      mixer.appendChild(el);
+      setTimeout(() => mixer.removeChild(el), 2000);
+    }
+
     audios.forEach(audio => {
       const div = document.createElement('div');
       div.className = 'audio-piece';
       div.dataset.id = audio.id;
       div.innerHTML = `<audio controls src="audio_snippets/${audio.file}"></audio>`;
       div.draggable = true;
-      div.addEventListener('dragstart', e => {
-        e.dataTransfer.setData('id', audio.id);
+
+      div.addEventListener('dragstart', () => {
+        div.classList.add('dragging');
       });
+
+      div.addEventListener('dragend', () => {
+        div.classList.remove('dragging');
+      });
+
+      // touch support
+      let offsetX, offsetY;
 
       div.addEventListener('touchstart', e => {
+        const touch = e.touches[0];
         div.classList.add('dragging');
-        div.touchStart = e.touches[0];
-      });
+        offsetX = touch.clientX - div.getBoundingClientRect().left;
+        offsetY = touch.clientY - div.getBoundingClientRect().top;
+        div.style.position = 'absolute';
+        div.style.zIndex = 1000;
+        document.body.appendChild(div);
 
-      div.addEventListener('touchend', e => {
-        const touch = e.changedTouches[0];
-        const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (mixer.contains(dropTarget)) {
-          const currentSlot = placed.length;
-          const id = div.dataset.id;
+        const move = e => {
+          const t = e.touches[0];
+          div.style.left = `${t.clientX - offsetX}px`;
+          div.style.top = `${t.clientY - offsetY}px`;
+        };
 
-          if (id === correctOrder[currentSlot]) {
-            placed.push(id);
-            mixer.appendChild(div);
-            div.draggable = false;
-            showMark(checkmark);
-            updatePlayButton();
+        const end = e => {
+          const t = e.changedTouches[0];
+          const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
+
+          if (mixer.contains(dropTarget)) {
+            const id = div.dataset.id;
+            const currentSlot = placed.length;
+            if (id === correctOrder[currentSlot]) {
+              placed.push(id);
+              div.style.position = '';
+              div.style.left = '';
+              div.style.top = '';
+              mixer.appendChild(div);
+              showFeedback(true);
+              updatePlayButton();
+            } else {
+              showFeedback(false);
+              div.classList.add('wrong');
+              setTimeout(() => div.classList.remove('wrong'), 300);
+              source.appendChild(div);
+            }
           } else {
-            showMark(crossmark);
-            div.classList.add('wrong');
-            setTimeout(() => div.classList.remove('wrong'), 300);
+            source.appendChild(div);
           }
-        }
-        div.classList.remove('dragging');
+
+          div.classList.remove('dragging');
+          document.removeEventListener('touchmove', move);
+          document.removeEventListener('touchend', end);
+        };
+
+        document.addEventListener('touchmove', move);
+        document.addEventListener('touchend', end);
       });
 
       source.appendChild(div);
@@ -271,20 +306,26 @@
 
     mixer.addEventListener('dragover', e => e.preventDefault());
     mixer.addEventListener('drop', e => {
-      const id = e.dataTransfer.getData('id');
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/plain');
       const dragged = document.querySelector(`[data-id="${id}"]`);
       const currentSlot = placed.length;
-
       if (id === correctOrder[currentSlot]) {
         placed.push(id);
         mixer.appendChild(dragged);
         dragged.draggable = false;
-        showMark(checkmark);
+        showFeedback(true);
         updatePlayButton();
       } else {
-        showMark(crossmark);
+        showFeedback(false);
         dragged.classList.add('wrong');
         setTimeout(() => dragged.classList.remove('wrong'), 300);
+      }
+    });
+
+    document.addEventListener('dragstart', function(e) {
+      if (e.target.classList.contains('audio-piece')) {
+        e.dataTransfer.setData('text/plain', e.target.dataset.id);
       }
     });
 
