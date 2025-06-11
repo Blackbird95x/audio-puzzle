@@ -2,384 +2,194 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Audio Puzzle Spiel</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Audio-Puzzle: Finde den Kristall</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-      background-color: black;
-      background-image: url('hintergrund.jpg');
+    body {
+      background: #000;
+      background-image: url('assets/background.png');
       background-size: cover;
       background-position: center;
-      background-repeat: no-repeat;
-      height: 100%;
-      width: 100%;
-      overflow-x: hidden;
-    }
-    .overlay {
-      backdrop-filter: brightness(0.6);
-      min-height: 100vh;
-      padding: 1rem;
+      color: #eee;
+      font-family: sans-serif;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      position: relative;
-      box-sizing: border-box;
-    }
-    h1 {
-      color: white;
-      text-align: center;
-      font-size: 1.5rem;
-    }
-    .tutorial {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.85);
-      color: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
       align-items: center;
-      text-align: center;
-      z-index: 2000;
-      padding: 2rem;
-      box-sizing: border-box;
-    }
-    .game-area {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-    @media (min-width: 768px) {
-      .game-area {
-        flex-direction: row;
-        justify-content: space-between;
-      }
-    }
-    .zone {
-      flex: 1;
       padding: 1rem;
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px dashed #ccc;
-      min-height: 200px;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      border-radius: 8px;
-      box-sizing: border-box;
-    }
-    .audio-piece {
-      background: #fff;
-      padding: 0.5rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      cursor: grab;
-      touch-action: none;
-      transition: transform 0.2s;
       position: relative;
     }
-    .audio-piece.dragging {
-      transform: scale(1.05);
-      z-index: 1000;
-      opacity: 0.7;
+    h1 { margin-bottom: 0.5rem; }
+    #tutorial {
+      background: rgba(0,0,0,0.6);
+      padding: 1rem;
+      border-radius: 8px;
+      max-width: 80vw;
+      margin-bottom: 1rem;
+      line-height: 1.4;
     }
-    .audio-piece audio {
-      width: 100%;
-      outline: none;
+    .box {
+      border: 2px dashed #555;
+      padding: 1rem;
+      margin: 0.5rem;
+      width: 80vw;
+      min-height: 100px;
+      background: rgba(0,0,0,0.4);
+      position: relative;
     }
-    .audio-piece.wrong {
-      animation: shake 0.3s;
+    .audio-item {
+      margin: 0.5rem;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .audio-item button.play {
+      background: none;
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      margin-bottom: 0.5rem;
+    }
+    .key-container {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    .key {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      background: #336699;
+      margin: 0.2rem;
+      cursor: grab;
+      user-select: none;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .key-error {
+      color: #f33;
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      opacity: 1;
+      transition: opacity 1s ease-out;
+    }
+    #assembleBtn {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
     }
     @keyframes shake {
       0% { transform: translateX(0); }
-      25% { transform: translateX(-10px); }
-      50% { transform: translateX(10px); }
-      75% { transform: translateX(-10px); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
       100% { transform: translateX(0); }
     }
-    #final-audio {
-      margin-top: 1rem;
-      text-align: center;
-    }
-    button {
-      padding: 0.5rem 1rem;
+    .shake { animation: shake 0.5s; }
+    .error-message {
+      color: #f33;
       font-size: 1rem;
-      border: none;
-      border-radius: 5px;
-      background-color: #38bdf8;
-      color: white;
-      cursor: pointer;
+      margin-top: 0.5rem;
+      opacity: 1;
+      transition: opacity 1s ease-out;
     }
-    button:disabled {
-      background-color: #94a3b8;
-      cursor: not-allowed;
-    }
-    .checkmark, .crossmark {
-      display: none;
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      font-size: 2rem;
-      padding: 0.5rem;
-      border-radius: 50%;
-      z-index: 1000;
-    }
-    .checkmark {
-      background-color: #4caf50;
-      color: white;
-    }
-    .crossmark {
-      background-color: #ef4444;
-      color: white;
-    }
-    .visible {
-      display: block !important;
-      animation: fadeOut 2s forwards;
-    }
-    @keyframes fadeOut {
-      0% { opacity: 1; }
-      80% { opacity: 1; }
-      100% { opacity: 0; display: none; }
-    }
-    .popup-alert {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      color: black;
-      padding: 2rem;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
-      z-index: 3000;
-      display: none;
-    }
-    /* ********** NEUER STYLE für Mobile Feedback ********** */
-    #mobileFeedback {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 1rem 2rem;
-      border-radius: 10px;
-      font-size: 1.5rem;
-      color: white;
-      z-index: 4000;
-    }
-    #mobileFeedback.success {
-      background: rgba(76, 175, 80, 0.9); /* grün */
-    }
-    #mobileFeedback.error {
-      background: rgba(239, 68, 68, 0.9); /* rot */
-    }
-    /* ******************************************************* */
   </style>
 </head>
 <body>
-  <div class="overlay">
-    <div class="tutorial" id="tutorial">
-      <h2>Willkommen beim Audio-Puzzle!</h2>
-      <p>Ziehe die Audioschnipsel von links in der richtigen Reihenfolge nach rechts in den Mixer.</p>
-      <p>Wenn du alles richtig gemacht hast, kannst du das komplette Audio anhören!</p>
-      <button onclick="document.getElementById('tutorial').style.display='none'">Los geht's!</button>
-    </div>
-    <h1>🎧 Audio-Puzzle: Finde den Kristall</h1>
-    <div class="game-area">
-      <div id="source" class="zone"></div>
-      <div id="mixer" class="zone"></div>
-    </div>
-    <div id="final-audio">
-      <button id="playButton" onclick="checkBeforePlay()" disabled>🔊 Zusammengesetztes Audio abspielen</button>
-    </div>
+  <h1>Audio-Puzzle: Finde den Kristall</h1>
+  <div id="tutorial">
+    Wenn ihr euch den geheimnisvollen Sternenkoordinaten nähert, hört ihr Bruchstücke eines Notsignals – manchmal verzerrt, manchmal falschherum. Eure Aufgabe: Hört jedes Schnipsel an und entscheidet, welchen Schlüssel ihr braucht. Zieht 🔑 „Entzerren" oder 🔑 „Umkehren" auf das Play-Symbol, um das Audio zu reparieren. Habt ihr alle Schnippsel wiederhergestellt, ordnet sie in der richtigen Reihenfolge, um den Weg zum zweiten Kristall zu entdecken!
   </div>
 
-  <!-- Popup, wenn noch nicht alle Elemente verschoben wurden -->
-  <div id="popupAlert" class="popup-alert">Bitte platziere zuerst alle Schnipsel im Mixer!</div>
-
-  <!-- ********** Neues Mobile-Feedback-Pop-up ********** -->
-  <div id="mobileFeedback"></div>
-  <!-- ************************************************** -->
+  <div id="source" class="box"><h3>Roh-Schnipsel</h3></div>
+  <div class="key-container" id="keys">
+    <div class="key" draggable="true" id="key-distort" ondragstart="dragKey(event)">🔑 Entzerren</div>
+    <div class="key" draggable="true" id="key-reverse" ondragstart="dragKey(event)">🔑 Umkehren</div>
+  </div>
+  <div id="unlocked" class="box"><h3>Entschlüsselte Schnipsel</h3></div>
+  <div id="order" class="box" ondrop="dropOrder(event)" ondragover="allowDrop(event)"><h3>Reihenfolge zusammensetzen</h3></div>
+  <button id="assembleBtn" disabled onclick="playCombined()">🔊 Komplettes Audio abspielen</button>
 
   <script>
-    const audios = [
-      {file: 'dummy1.mp3', id: 'a'},
-      {file: 'dummy2.mp3', id: 'b'},
-      {file: 'dummy3.mp3', id: 'c'}
-    ];
-    const correctOrder = ['a', 'b', 'c'];
-    const placed = [];
-    const source = document.getElementById('source');
-    const mixer = document.getElementById('mixer');
-    const playButton = document.getElementById('playButton');
-    const popupAlert = document.getElementById('popupAlert');
-    const mobileFeedback = document.getElementById('mobileFeedback');
+    window.addEventListener('load', () => {
+      alert("Wenn ihr euch den geheimnisvollen Sternenkoordinaten nähert, hört ihr Bruchstücke eines Notsignals – manchmal verzerrt, manchmal falschherum. Eure Aufgabe: Hört jedes Schnipsel an und entscheidet, welchen Schlüssel ihr braucht. Zieht 🔑 'Entzerren' oder 🔑 'Umkehren' auf das Play-Symbol, um das Audio zu reparieren. Habt ihr alle Schnipsel wiederhergestellt, ordnet sie in der richtigen Reihenfolge, um den Weg zum zweiten Kristall zu entdecken!");
+    });
 
-    function updatePlayButton() {
-      // Button wird aktiv, sobald source leer ist
-      playButton.disabled = source.children.length > 0;
-    }
+    const audioFiles = ['assets/1.mp3','assets/2.mp3','assets/3.mp3','assets/4.mp3','assets/5.mp3','assets/6.mp3','assets/7.mp3'];
+    const correctOrder = [...audioFiles];
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-    function showFeedback(correct) {
-      // Desktop‐Feedback (kleines Häkchen/Kreuz im Mixer‐Bereich)
-      const el = document.createElement('div');
-      el.className = correct ? 'checkmark visible' : 'crossmark visible';
-      el.textContent = correct ? '✔️' : '❌';
-      mixer.appendChild(el);
-      setTimeout(() => mixer.removeChild(el), 2000);
-    }
+    audioFiles.forEach((src, idx) => {
+      fetch(src).then(r=>r.arrayBuffer()).then(buf=>ctx.decodeAudioData(buf)).then(buffer=>{
+        const effect = Math.random() < 0.5 ? 'reverse' : 'distort';
+        const raw = buffer.getChannelData(0).slice();
+        const data = new Float32Array(raw.length);
+        let playbackRate = 1;
+        if(effect==='reverse'){
+          for(let i=0;i<raw.length;i++) data[i]=raw[raw.length-1-i];
+        } else {
+          for(let i=0;i<raw.length;i++){
+            const noise=Math.random()*2-1;
+            data[i]=noise*0.07+raw[i]*0.93;
+          }
+          playbackRate=0.5+Math.random()*1.5;
+        }
+        const container=document.createElement('div');
+        container.className='audio-item'; container.draggable=true;
+        container.id='item-'+idx; container.dataset.src=src;
+        container.dataset.effect=effect; container.dataset.playbackRate=playbackRate;
+        container.dataset.keyNeeded=effect==='reverse'?'key-reverse':'key-distort'; container.dataset.unlocked='false';
+        container.ondragstart=dragAudio; container.ondrop=dropOnSnippet; container.ondragover=allowDrop;
+        const btn=document.createElement('button'); btn.className='play'; btn.textContent='▶️';
+        btn.onclick=()=>{const buf2=ctx.createBuffer(1,data.length,buffer.sampleRate);buf2.getChannelData(0).set(data);const srcNode=ctx.createBufferSource();srcNode.buffer=buf2;srcNode.playbackRate.value=parseFloat(container.dataset.playbackRate);srcNode.connect(ctx.destination);srcNode.start();};
+        container.appendChild(btn);
+        document.getElementById('source').appendChild(container);
+      });
+    });
 
-    function showMobileFeedback(correct) {
-      // Mobile Feedback: zentrales Pop-up mit grünem Haken oder rotem Kreuz
-      if (correct) {
-        mobileFeedback.textContent = '✔️ Gut gemacht!';
-        mobileFeedback.className = 'success';
-      } else {
-        mobileFeedback.textContent = '❌ Versuch\'s nochmal!';
-        mobileFeedback.className = 'error';
-      }
-      mobileFeedback.style.display = 'flex';
-      // nach 1,5 Sekunden wieder ausblenden
-      setTimeout(() => {
-        mobileFeedback.style.display = 'none';
-      }, 1500);
-    }
+    function allowDrop(ev){ev.preventDefault();}
+    function dragAudio(ev){ev.dataTransfer.setData('text/plain',ev.currentTarget.id);}
+    function dragKey(ev){ev.dataTransfer.setData('key',ev.currentTarget.id);}
 
-    function checkBeforePlay() {
-      if (source.children.length > 0) {
-        popupAlert.style.display = 'block';
-        setTimeout(() => popupAlert.style.display = 'none', 3000);
+    function dropOnSnippet(ev){
+      ev.preventDefault();
+      const key=ev.dataTransfer.getData('key');
+      const el=ev.currentTarget;
+      // Falscher Schlüssel: Anzeige unter keys
+      if(key && el.dataset.keyNeeded!==key && el.dataset.unlocked==='false'){
+        const keyBox=document.getElementById('keys');
+        const msg=document.createElement('div'); msg.className='key-error';
+        msg.textContent='❌ Falscher Schlüssel'; keyBox.appendChild(msg);
+        setTimeout(()=>{msg.style.opacity='0';},2000);
+        setTimeout(()=>{keyBox.removeChild(msg);},3000);
         return;
       }
-      playFinal();
+      // Richtiger Schlüssel
+      if(key && el.dataset.keyNeeded===key && el.dataset.unlocked==='false'){
+        el.dataset.unlocked='true';
+        const orig=document.createElement('button'); orig.className='play'; orig.textContent='▶️'; orig.onclick=() => new Audio(el.dataset.src).play();
+        el.innerHTML=''; el.appendChild(orig);
+        document.getElementById('unlocked').appendChild(el);
+      }
     }
 
-    audios.forEach(audio => {
-      const div = document.createElement('div');
-      div.className = 'audio-piece';
-      div.dataset.id = audio.id;
-      div.innerHTML = `<audio controls src="audio_snippets/${audio.file}"></audio>`;
-      div.draggable = true;
-
-      // Desktop-Drag & Drop
-      div.addEventListener('dragstart', e => {
-        e.dataTransfer.setData('text/plain', audio.id);
-        div.classList.add('dragging');
-      });
-      div.addEventListener('dragend', () => {
-        div.classList.remove('dragging');
-      });
-
-      // Touch-Handling
-      div.addEventListener('touchstart', e => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const offsetX = touch.clientX - div.getBoundingClientRect().left;
-        const offsetY = touch.clientY - div.getBoundingClientRect().top;
-
-        // Erstelle Klon für das visuelle Ziehen
-        const ghost = div.cloneNode(true);
-        ghost.classList.add('dragging');
-        ghost.style.position = 'fixed';
-        ghost.style.zIndex = '1000';
-        ghost.style.width = `${div.offsetWidth}px`;
-        document.body.appendChild(ghost);
-
-        const move = e => {
-          const t = e.touches[0];
-          ghost.style.left = `${t.clientX - offsetX}px`;
-          ghost.style.top = `${t.clientY - offsetY}px`;
-        };
-
-        const end = e => {
-          const t = e.changedTouches[0];
-          ghost.remove();
-          const dropTarget = document.elementFromPoint(t.clientX, t.clientY);
-          const id = div.dataset.id;
-          const currentSlot = placed.length;
-          const isDropOnMixer = dropTarget && (dropTarget === mixer || mixer.contains(dropTarget));
-
-          if (isDropOnMixer) {
-            if (id === correctOrder[currentSlot]) {
-              // richtig
-              placed.push(id);
-              mixer.appendChild(div);
-              div.draggable = false;
-              if (window.innerWidth < 768) {
-                showMobileFeedback(true);
-              } else {
-                showFeedback(true);
-              }
-              updatePlayButton();
-            } else {
-              // falsch
-              source.appendChild(div);
-              if (window.innerWidth < 768) {
-                showMobileFeedback(false);
-              } else {
-                showFeedback(false);
-                div.classList.add('wrong');
-                setTimeout(() => div.classList.remove('wrong'), 300);
-              }
-            }
-          } else {
-            // außerhalb des Mixers losgelassen → zurück in die Quelle
-            source.appendChild(div);
-          }
-
-          document.removeEventListener('touchmove', move);
-          document.removeEventListener('touchend', end);
-        };
-
-        document.addEventListener('touchmove', move, { passive: false });
-        document.addEventListener('touchend', end);
-      });
-
-      source.appendChild(div);
-    });
-
-    // Desktop‐Drop
-    mixer.addEventListener('dragover', e => e.preventDefault());
-    mixer.addEventListener('drop', e => {
-      e.preventDefault();
-      const id = e.dataTransfer.getData('text/plain');
-      const dragged = document.querySelector(`[data-id="${id}"]`);
-      const currentSlot = placed.length;
-      if (id === correctOrder[currentSlot]) {
-        placed.push(id);
-        mixer.appendChild(dragged);
-        dragged.draggable = false;
-        showFeedback(true);
-        updatePlayButton();
-      } else {
-        showFeedback(false);
-        dragged.classList.add('wrong');
-        setTimeout(() => dragged.classList.remove('wrong'), 300);
+    function dropOrder(ev){
+      ev.preventDefault();
+      const id=ev.dataTransfer.getData('text/plain'); const el=document.getElementById(id);
+      if(el && el.dataset.unlocked==='true'){
+        const idx=document.getElementById('order').children.length-1;
+        if(correctOrder[idx]===el.dataset.src){
+          document.getElementById('order').appendChild(el);
+          if(idx+1===correctOrder.length) document.getElementById('assembleBtn').disabled=false;
+        } else {
+          el.classList.add('shake'); el.addEventListener('animationend',()=>{el.classList.remove('shake');document.getElementById('unlocked').appendChild(el);},{once:true});
+          const msg=document.createElement('div');msg.className='error-message';msg.textContent='❌ Falscher Schnippsel, versuche es noch einmal.';
+          const orderBox=document.getElementById('order');orderBox.appendChild(msg);
+          setTimeout(()=>{msg.style.opacity='0';},2000);setTimeout(()=>{orderBox.removeChild(msg);},3000);
+        }
       }
-    });
+    }
 
-    function playFinal() {
-      const audiosInMixer = mixer.querySelectorAll('audio');
-      let index = 0;
-      const playNext = () => {
-        if (index >= audiosInMixer.length) return;
-        const audio = audiosInMixer[index];
-        audio.currentTime = 0;
-        audio.play();
-        audio.onended = () => {
-          index++;
-          playNext();
-        };
-      };
-      playNext();
+    function playCombined(){
+      let i=0;const next=()=>{if(i>=correctOrder.length){alert("Hurra! 🎉 Ihr habt den Code gefunden – der Code lautet 126");return;}const a=new Audio(correctOrder[i++]);a.onended=next;a.play();};next();
     }
   </script>
 </body>
